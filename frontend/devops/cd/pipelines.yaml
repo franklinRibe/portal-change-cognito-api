@@ -6,10 +6,10 @@ stages:
     dockercontext: "."
     serviceConnection: "AWS - VRS Account"
     
-- template: /services/stages/default/deploy.yml@PipelineCore
-  parameters:
-    name: "vrs-portal-backoffice-frontend"
-    serviceConnection: "AWS - VRS Account"
+# - template: /services/stages/default/deploy.yml@PipelineCore
+#   parameters:
+#     name: "vrs-portal-backoffice-frontend"
+#     serviceConnection: "AWS - VRS Account"
 
 resources:
   repositories:
