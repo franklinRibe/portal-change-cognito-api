@@ -12,7 +12,7 @@ COPY frontend/package*.json ./
 RUN npm install
 
 # Copia o restante do código
-COPY . .
+COPY frontend/. .
 
 # Variável de ambiente para URL da API (pode sobrescrever no build)
 ARG VITE_API_BASE_URL
