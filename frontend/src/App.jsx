@@ -37,7 +37,7 @@ const drawerWidth = 260;
 
 // URL base do backend (configurável via Vite)
 // no Mac: export VITE_API_BASE_URL="http://localhost:8000"
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Opções de módulo para troca de senha
 const passwordOptions = [
