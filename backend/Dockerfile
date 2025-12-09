@@ -3,7 +3,7 @@
 # ================================
 FROM python:3.11-slim AS builder
 
-WORKDIR /backend/app
+WORKDIR /app
 
 # Instala dependências básicas
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia requirements
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Cria venv isolado dentro da imagem (melhor prática p/ produção)
 RUN python -m venv /opt/venv
@@ -26,15 +26,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ================================
 FROM python:3.11-slim AS runtime
 
-WORKDIR /backend/app
+WORKDIR /app
 
 # Copia o venv do builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copia o código da aplicação
-COPY app/ ./app/
-COPY requirements.txt .
+COPY backend/app/ ./app/
+COPY backend/requirements.txt .
 
 # Usuário não-root para segurança no Kubernetes
 RUN useradd -m appuser
