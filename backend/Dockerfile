@@ -3,7 +3,7 @@
 # ================================
 FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /backend/app
 
 # Instala dependências básicas
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia requirements
-COPY backend/requirements.txt .
+COPY requirements.txt .
 
 # Cria venv isolado dentro da imagem (melhor prática p/ produção)
 RUN python -m venv /opt/venv
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ================================
 FROM python:3.11-slim AS runtime
 
-WORKDIR /app
+WORKDIR /backend/app
 
 # Copia o venv do builder
 COPY --from=builder /opt/venv /opt/venv
