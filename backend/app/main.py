@@ -17,12 +17,7 @@ app = FastAPI(
     description="API para consultar e alterar usuários no Cognito",
 )
 
-origins = [
-    "http://localhost:5173",  # Vite dev server
-    # se quiser liberar tudo na fase de dev:
-    # "http://localhost:4173",
-    # "http://127.0.0.1:5173",
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,7 +26,7 @@ app.add_middleware(
     allow_methods=["*"],            # GET, POST, PUT, DELETE, OPTIONS...
     allow_headers=["*"],            # Headers customizados
 )
-
+ApplicationType = Literal["app", "corp", "parcerias"]
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
@@ -60,7 +55,7 @@ class UserResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     cpf: constr(min_length=11, max_length=11)
     change_pass: str  # "yes" / "no"
-    application: Literal["app", "corporativo", "parcerias"]
+    application: ApplicationType
 
 class ChangePasswordResponse(BaseModel):
     username: str
@@ -68,15 +63,15 @@ class ChangePasswordResponse(BaseModel):
     message: str
 
 
-@app.get("/health")
+@app.get("/api/health")
 def health_check():
     return {"status": "ok"}
 
 
-@app.get("/users/{username}", response_model=UserResponse)
+@app.get("/api/users/{username}", response_model=UserResponse)
 def get_user(
     username: str,
-    application: Literal["app", "corp", "parcerias"] = Query(...),
+    application: ApplicationType = Query(...),
 ):
     """
     Consulta o usuário no Cognito pelo username.
@@ -108,7 +103,7 @@ def get_user(
     )
 
 
-@app.post("/users/{username}", response_model=ChangePasswordResponse)
+@app.post("/api/users/{username}", response_model=ChangePasswordResponse)
 def change_user_password(username: str, payload: ChangePasswordRequest):
     """
     Altera a senha do usuário no Cognito.
@@ -142,7 +137,7 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
                 "payload": payload.dict(),
             }
         }
-)
+    )
 
     try:
         new_password = set_user_password(

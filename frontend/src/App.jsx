@@ -37,7 +37,7 @@ const drawerWidth = 260;
 
 // URL base do backend (configurável via Vite)
 // no Mac: export VITE_API_BASE_URL="http://localhost:8000"
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // Opções de módulo para troca de senha
 const passwordOptions = [
@@ -48,13 +48,13 @@ const passwordOptions = [
     icon: SmartphoneIcon,
   },
   {
-    id: "corporate",
+    id: "corp",
     label: "Corporativo",
     description: "Área corporativa, gestão interna e operações.",
     icon: BusinessCenterIcon,
   },
   {
-    id: "partners",
+    id: "parcerias",
     label: "Parcerias",
     description: "Gestão de parcerias, integrações e acordos.",
     icon: HandshakeIcon,
