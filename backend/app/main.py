@@ -7,6 +7,7 @@ from app.utils.json_logger import JsonFormatter
 from app.core.config import settings
 
 import boto3
+from botocore.exceptions import ClientError
 import logging
 from fastapi import FastAPI, HTTPException, Query
 
@@ -67,7 +68,6 @@ class ChangePasswordResponse(BaseModel):
 def health_check():
     return {"status": "ok"}
 
-
 @app.get("/api/users/{username}", response_model=UserResponse)
 def get_user(
     username: str,
@@ -83,11 +83,18 @@ def get_user(
 
     try:
         resp = admin_get_user(username=username, application=application)
-    except client.exceptions.UserNotFoundException:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado no Cognito")
+    except ClientError as e:
+        logger.exception("Erro do Cognito ao buscar usuário")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro do Cognito ao buscar usuário: {e}",
+        )
     except Exception as e:
-        # Aqui dá para logar com mais detalhe depois
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar usuário: {e}")
+        logger.exception("Erro inesperado ao buscar usuário")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao buscar usuário: {e}",
+        )
 
     # Converte a lista de atributos do Cognito para um dict
     attrs_dict = {

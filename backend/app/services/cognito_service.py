@@ -7,6 +7,7 @@ import boto3
 
 from app.core.config import settings
 from app.utils.json_logger import JsonFormatter
+from botocore.exceptions import ClientError
 
 
 handler = logging.StreamHandler()
@@ -52,26 +53,76 @@ def admin_get_user(username: str, application: str):
     user_pool_id = resolve_user_pool_id(application)
 
     logger.info(
-        f"Buscando usuário no Cognito",
+        "Buscando usuário no Cognito",
         extra={
-            "username": username,
-            "application": application,
-            "user_pool_id": user_pool_id,
+            "extra_data": {
+                "event": "admin_get_user_start",
+                "username": username,
+                "application": application,
+                "user_pool_id": user_pool_id,
+            }
         },
     )
 
-    resp = client.admin_get_user(
-        UserPoolId=user_pool_id,
-        Username=username,
-    )
+    try:
+        resp = client.admin_get_user(
+            UserPoolId=user_pool_id,
+            Username=username,
+        )
+    except client.exceptions.UserNotFoundException:
+        logger.warning(
+            "Usuário não encontrado no Cognito",
+            extra={
+                "extra_data": {
+                    "event": "admin_get_user_not_found",
+                    "username": username,
+                    "application": application,
+                    "user_pool_id": user_pool_id,
+                }
+            },
+        )
+        raise
+
+    except ClientError as e:
+        logger.exception(
+            "Erro do Cognito ao buscar usuário",
+            extra={
+                "extra_data": {
+                    "event": "admin_get_user_client_error",
+                    "username": username,
+                    "application": application,
+                    "user_pool_id": user_pool_id,
+                    "aws_error": str(e),
+                }
+            },
+        )
+        raise
+
+    except Exception as e:
+        logger.exception(
+            "Erro inesperado ao buscar usuário no Cognito",
+            extra={
+                "extra_data": {
+                    "event": "admin_get_user_unexpected_error",
+                    "username": username,
+                    "application": application,
+                    "user_pool_id": user_pool_id,
+                    "error": str(e),
+                }
+            },
+        )
+        raise
 
     logger.info(
-        f"Usuário encontrado no Cognito",
+        "Usuário encontrado no Cognito",
         extra={
-            "username": username,
-            "application": application,
-            "user_pool_id": user_pool_id,
-            "cognito_status": resp.get("UserStatus"),
+            "extra_data": {
+                "event": "admin_get_user_success",
+                "username": username,
+                "application": application,
+                "user_pool_id": user_pool_id,
+                "cognito_status": resp.get("UserStatus"),
+            }
         },
     )
 
