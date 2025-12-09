@@ -2,7 +2,7 @@ stages:
 - template: /resources/dockerfile-to-ecr.yml@PipelineCore
   parameters:
     name: "vrs-portal-backoffice-frontend"
-    dockerfile: "./Dockerfile"
+    dockerfile: "./frontend/Dockerfile"
     dockercontext: "."
     serviceConnection: "AWS - VRS Account"
     
