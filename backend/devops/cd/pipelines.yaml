@@ -1,0 +1,28 @@
+stages:
+- template: /resources/dockerfile-to-ecr.yml@PipelineCore
+  parameters:
+    name: "vrs-portal-backoffice-backend"
+    dockerfile: "./backend/Dockerfile"
+    dockercontext: "."
+    serviceConnection: "AWS - VRS Account"
+    
+# - template: /services/stages/default/deploy.yml@PipelineCore
+#   parameters:
+#     name: "vrs-portal-backoffice-frontend"
+#     serviceConnection: "AWS - VRS Account"
+
+resources:
+  repositories:
+  # - repository: gitops
+  #   name: 'vinci-retirement-services/gitops'
+  #   type: git
+  #   ref: main
+  #   endpoint: PipelineCore
+  
+  - repository: PipelineCore
+    name: 'vinci-retirement-services-devops/PipelineCore'
+    type: git
+    ref: feat/python-docker
+    endpoint: PipelineCore
+
+trigger: none

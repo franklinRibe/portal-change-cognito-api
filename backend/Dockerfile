@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia requirements
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Cria venv isolado dentro da imagem (melhor prática p/ produção)
 RUN python -m venv /opt/venv
