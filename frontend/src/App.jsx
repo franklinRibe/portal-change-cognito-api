@@ -540,6 +540,20 @@ function PlaceholderScreen({ title }) {
   );
 }
 
+// 🔒 Redirect automático HTTP → HTTPS
+if (
+  typeof window !== "undefined" &&
+  window.location.protocol === "http:" &&
+  window.location.hostname !== "localhost"
+) {
+  window.location.href =
+    "https://" +
+    window.location.host +
+    window.location.pathname +
+    window.location.search;
+}
+
+
 export default function App() {
   const [menuSelected, setMenuSelected] = useState("dashboard");
   const [passwordStep, setPasswordStep] = useState("select-module"); // "select-module" | "cpf-app"
