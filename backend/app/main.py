@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Literal
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, EmailStr
 
 from app.services.cognito_service import admin_get_user, set_user_password, mask_password
 from app.utils.json_logger import JsonFormatter
@@ -54,7 +54,8 @@ class UserResponse(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    cpf: constr(min_length=11, max_length=11)
+    cpf: Optional[constr(min_length=11, max_length=11)] = None
+    email: Optional[EmailStr] = None
     change_pass: str  # "yes" / "no"
     application: ApplicationType
 
@@ -115,31 +116,53 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
     """
     Altera a senha do usuário no Cognito.
 
-    Body esperado:
-    {
-      "cpf": "00062716506",
-      "change_pass": "yes",
-      "application": "app" | "corp" | "parcerias"
-    }
+    Regras:
+    - application = "app"  -> usa CPF
+    - application = "corp" ou "parcerias" -> usa email
+
+    Path param `username` deve bater com o identificador usado:
+    - app: username == cpf
+    - corp/parcerias: username == email
     """
-    if username != payload.cpf:
-        raise HTTPException(
-            status_code=400,
-            detail="CPF do corpo da requisição não corresponde ao username da URL.",
-        )
+    # 1) Validação CPF/email obrigatórios conforme aplicação
+    if payload.application == "app":
+        if not payload.cpf:
+            raise HTTPException(
+                status_code=400,
+                detail="Para application='app', o campo 'cpf' é obrigatório.",
+            )
+        if username != payload.cpf:
+            raise HTTPException(
+                status_code=400,
+                detail="CPF do corpo da requisição não corresponde ao username da URL.",
+            )
+        identifier = payload.cpf
+    else:
+        # corp ou parcerias
+        if not payload.email:
+            raise HTTPException(
+                status_code=400,
+                detail="Para application='corp' ou 'parcerias', o campo 'email' é obrigatório.",
+            )
+        if username != payload.email:
+            raise HTTPException(
+                status_code=400,
+                detail="Email do corpo da requisição não corresponde ao username da URL.",
+            )
+        identifier = payload.email
 
     if payload.change_pass.lower() not in ("yes", "y", "true", "1"):
         raise HTTPException(
             status_code=400,
             detail="Alteração de senha não foi solicitada (change_pass != 'yes').",
-        )
+        )    
     # log de entrada do backend
     logger.info(
         "Requisição de troca de senha recebida",
         extra={
             "extra_data": {
                 "event": "request_received",
-                "username": payload.cpf,
+                "username": identifier,
                 "application": payload.application,
                 "payload": payload.dict(),
             }
@@ -148,13 +171,14 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
 
     try:
         new_password = set_user_password(
-            cpf=payload.cpf,
+            username=identifier,
             application=payload.application,
         )
     except ValueError as ve:
         # aplicação inválida
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        logger.exception("Erro ao alterar senha no Cognito")
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao alterar senha do usuário no Cognito: {e}",
@@ -164,7 +188,7 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
         extra={
             "extra_data": {
                 "event": "password_returned_to_frontend",
-                "username": payload.cpf,
+                "username": identifier,
                 "application": payload.application,
                 "new_password_masked": mask_password(new_password),
             }
@@ -172,7 +196,7 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
     )
 
     return ChangePasswordResponse(
-        username=payload.cpf,
+        username=identifier,
         new_password=new_password,
         message="Senha alterada com sucesso no Cognito.",
     )

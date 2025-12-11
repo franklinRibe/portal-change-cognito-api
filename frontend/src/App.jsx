@@ -471,6 +471,300 @@ function AppPasswordCpfForm({
     </Box>
   );
 }
+function EmailPasswordForm({
+  loading,
+  error,
+  userData,
+  onBack,
+  onSubmitIdentifier,
+  application, // "corp" ou "parcerias"
+}) {
+  const [email, setEmail] = useState("");
+  const [changeLoading, setChangeLoading] = useState(false);
+  const [changeResult, setChangeResult] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const moduleLabel =
+    application === "corp"
+      ? "Corporativo"
+      : application === "parcerias"
+      ? "Parcerias"
+      : "Módulo";
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      alert("Informe um e-mail válido.");
+      return;
+    }
+
+    setChangeResult(null);
+    // aqui o nome "identifier" já deixa claro que pode ser e-mail
+    await onSubmitIdentifier(trimmed);
+  };
+
+  const handleChangePasswordClick = async () => {
+    if (!userData) {
+      alert(
+        "Busque primeiro os dados do usuário pelo e-mail antes de trocar a senha."
+      );
+      return;
+    }
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      alert("Informe um e-mail válido.");
+      return;
+    }
+
+    const appName = application || "corp";
+
+    const confirmed = window.confirm(
+      `Atenção! Você está alterando a senha em PRODUÇÃO.\n\n` +
+        `Aplicação selecionada: ${appName.toUpperCase()}.\n\n` +
+        `Confirme se os dados do usuário (nome, email) estão corretos antes de continuar.\n\n` +
+        `Deseja realmente prosseguir com a troca de senha?`
+    );
+
+    if (!confirmed) return;
+
+    const payload = {
+      // para app você continua usando CPF; aqui é e-mail como identificador
+      email: trimmed,
+      change_pass: "yes",
+      application: appName,
+    };
+
+    try {
+      setChangeLoading(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(trimmed)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        let message = "Erro ao solicitar troca de senha.";
+
+        try {
+          const errData = await response.json();
+          message =
+            errData?.detail ||
+            errData?.message ||
+            JSON.stringify(errData) ||
+            message;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) message = text;
+          } catch {
+            /* ignore */
+          }
+        }
+
+        alert(message);
+        return;
+      }
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        // se o backend não devolver JSON, segue mesmo assim
+      }
+
+      console.log("Resposta troca de senha (email):", data);
+      setChangeResult(data);
+    } catch (err) {
+      console.error(err);
+      alert("Erro de comunicação com o servidor. Tente novamente.");
+    } finally {
+      setChangeLoading(false);
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (!changeResult?.new_password) return;
+    try {
+      await navigator.clipboard.writeText(changeResult.new_password);
+      alert("Senha copiada para a área de transferência.");
+    } catch (err) {
+      console.error(err);
+      alert("Não foi possível copiar a senha. Copie manualmente.");
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: "calc(100vh - 64px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "#f4f6f8",
+        p: 2,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper sx={{ p: 4, borderRadius: 4, boxShadow: 4 }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="h5" fontWeight={700} gutterBottom>
+                Troca de senha - {moduleLabel}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Informe o e-mail do usuário. Os dados serão consultados no
+                backend (Cognito) para continuar o fluxo de troca de senha.
+              </Typography>
+            </Box>
+
+            <form onSubmit={handleSubmit}>
+              <Stack spacing={2}>
+                <TextField
+                  label="E-mail"
+                  placeholder="usuario@empresa.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  fullWidth
+                />
+
+                {error && <Alert severity="error">{error}</Alert>}
+
+                <Stack direction="row" spacing={2} justifyContent="flex-end">
+                  <Button variant="outlined" onClick={onBack}>
+                    Voltar
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={18} /> : null}
+                  >
+                    {loading ? "Consultando..." : "Buscar Usuário"}
+                  </Button>
+                </Stack>
+              </Stack>
+            </form>
+
+            {userData && (
+              <Box mt={3}>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  Dados do usuário (Cognito)
+                </Typography>
+
+                <Stack spacing={2}>
+                  <TextField
+                    label="Usuário"
+                    value={userData.username || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Nome"
+                    value={userData.user_attributes?.nickname || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Email"
+                    value={userData.user_attributes?.email || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Telefone"
+                    value={userData.user_attributes?.phone_number || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Data de nascimento"
+                    value={userData.user_attributes?.birthdate || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Status"
+                    value={userData.user_status || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <TextField
+                    label="Sub"
+                    value={userData.user_attributes?.sub || ""}
+                    fullWidth
+                    disabled
+                  />
+
+                  <Box display="flex" justifyContent="center" mt={2}>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={handleChangePasswordClick}
+                      disabled={changeLoading}
+                    >
+                      {changeLoading ? "Enviando..." : "Trocar senha"}
+                    </Button>
+                  </Box>
+                </Stack>
+              </Box>
+            )}
+
+            {changeResult && (
+              <Box mt={3}>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  {changeResult.message ||
+                    "Senha alterada com sucesso no Cognito."}
+                </Alert>
+                <Stack spacing={2} alignItems="center">
+                  <TextField
+                    label="Nova senha"
+                    type={showPassword ? "text" : "password"}
+                    value={changeResult.new_password || ""}
+                    fullWidth
+                    disabled
+                  />
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    gap={2}
+                    flexWrap="wrap"
+                  >
+                    <Button variant="outlined" onClick={handleCopyPassword}>
+                      Copiar senha
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                    >
+                      {showPassword ? "Ocultar senha" : "Revelar senha"}
+                    </Button>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    align="center"
+                  >
+                    Copie a senha pois ela não será mais revelada no futuro, e
+                    peça ao usuário para trocá-la no primeiro login.
+                  </Typography>
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
+  );
+}
 
 // Wrapper da área de troca de senha (decide qual “subtela” renderizar)
 function PasswordChangeScreen({
@@ -485,22 +779,44 @@ function PasswordChangeScreen({
   snackbar,
   onCloseSnackbar,
 }) {
-  const content =
-    step === "cpf-app" && selectedOption === "app" ? (
+  let content;
+
+  if (step === "cpf-app" && selectedOption === "app") {
+    // fluxo por CPF
+    content = (
       <AppPasswordCpfForm
         loading={apiLoading}
         error={apiError}
         userData={userData}
         onBack={onBackToOptions}
         onSubmitCpf={onCpfSubmit}
-        application={selectedOption}
+        application={selectedOption} // "app"
       />
-    ) : (
+    );
+  } else if (
+    step === "cpf-app" &&
+    (selectedOption === "corp" || selectedOption === "parcerias")
+  ) {
+    // fluxo por e-mail, compartilhado entre corp/parcerias
+    content = (
+      <EmailPasswordForm
+        loading={apiLoading}
+        error={apiError}
+        userData={userData}
+        onBack={onBackToOptions}
+        onSubmitIdentifier={onCpfSubmit}
+        application={selectedOption} // "corp" ou "parcerias"
+      />
+    );
+  } else {
+    // tela de seleção dos cards
+    content = (
       <PasswordModuleSelection
         selectedOption={selectedOption}
         onOptionClick={onOptionClick}
       />
     );
+  }
 
   return (
     <>
@@ -592,15 +908,13 @@ export default function App() {
   const handlePasswordOptionClick = (option) => {
     setSelectedPasswordOption(option.id);
 
-    if (option.id === "app") {
-      // vai para tela de CPF
+    if (["app", "corp", "parcerias"].includes(option.id)) {
       setPasswordStep("cpf-app");
       setSnackbar({
         open: true,
         message: `Módulo selecionado: ${option.label}`,
       });
     } else {
-      // para os outros módulos você pode criar fluxos semelhantes depois
       setSnackbar({
         open: true,
         message: `Módulo ${option.label} ainda não implementado.`,
@@ -619,7 +933,7 @@ export default function App() {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  const handleCpfSubmit = async (cpf) => {
+  const handleCpfSubmit = async (identifier) => {
     try {
       setApiLoading(true);
       setApiError(null);
@@ -627,9 +941,10 @@ export default function App() {
 
       const application = selectedPasswordOption || "app";
 
-      // monta URL tipo: http://localhost:8000/users/00062716506
       const response = await fetch(
-        `${API_BASE_URL}/users/${cpf}?application=${encodeURIComponent(application)}`,
+        `${API_BASE_URL}/users/${encodeURIComponent(
+          identifier
+        )}?application=${encodeURIComponent(application)}`,
         {
           method: "GET",
         }
@@ -657,6 +972,7 @@ export default function App() {
       setApiLoading(false);
     }
   };
+
 
   // Decide conteúdo principal
   const renderContent = () => {

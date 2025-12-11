@@ -130,7 +130,7 @@ def admin_get_user(username: str, application: str):
 
 
 def set_user_password(
-    cpf: str,
+    username: str,
     application: str,
     password: Optional[str] = None,
 ) -> str:
@@ -150,7 +150,7 @@ def set_user_password(
         extra={
             "extra_data": {
                 "event": "password_reset_start",
-                "username": cpf,
+                "username": username,
                 "application": application,
                 "new_password_masked": masked,
                 "user_pool_id": user_pool_id,
@@ -160,7 +160,7 @@ def set_user_password(
 
     response = client.admin_set_user_password(
         UserPoolId=user_pool_id,
-        Username=cpf,
+        Username=username,
         Password=password,
         Permanent=True,
     )
@@ -171,7 +171,7 @@ def set_user_password(
         extra={
             "extra_data": {
                 "event": "password_reset_success",
-                "username": cpf,
+                "username": username,
                 "application": application,
                 "new_password_masked": masked,
                 "user_pool_id": user_pool_id,
