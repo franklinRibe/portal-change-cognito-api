@@ -176,6 +176,7 @@ function AppPasswordCpfForm({
   const [cpf, setCpf] = useState("");
   const [changeLoading, setChangeLoading] = useState(false);
   const [changeResult, setChangeResult] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // 🔹 Função para formatar CPF enquanto digita
   function formatCpf(value) {
@@ -432,18 +433,27 @@ function AppPasswordCpfForm({
                 <Stack spacing={2} alignItems="center">
                   <TextField
                     label="Nova senha"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={changeResult.new_password || ""}
                     fullWidth
                     disabled
                   />
-
-                  <Box display="flex" justifyContent="center">
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    gap={2}
+                    flexWrap="wrap"
+                  >
                     <Button variant="outlined" onClick={handleCopyPassword}>
                       Copiar senha
                     </Button>
+                    <Button
+                      variant="text"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                    >
+                      {showPassword ? "Ocultar senha" : "Revelar senha"}
+                    </Button>
                   </Box>
-                  
                   <Typography
                     variant="body2"
                     color="text.secondary"
