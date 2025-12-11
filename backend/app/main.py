@@ -35,8 +35,7 @@ handler.setFormatter(JsonFormatter())
 logger = logging.getLogger("password-reset-api")
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
-logger.propagate = False 
-logger = logging.getLogger("password-reset-api")
+logger.propagate = False
 
 def get_cognito_client():
     """
@@ -80,18 +79,47 @@ def get_user(
     O front deve chamar isso primeiro para preencher a tela com
     os dados atuais do usuário.
     """
-    client = get_cognito_client()
+    logger.info(
+        "Requisição de consulta de usuário recebida",
+        extra={
+            "extra_data": {
+                "event": "get_user_request_received",
+                "username": username,
+                "application": application,
+            }
+        },
+    )
 
     try:
         resp = admin_get_user(username=username, application=application)
     except ClientError as e:
-        logger.exception("Erro do Cognito ao buscar usuário")
+        logger.exception(
+            "Erro do Cognito ao buscar usuário",
+            extra={
+                "extra_data": {
+                    "event": "get_user_client_error",
+                    "username": username,
+                    "application": application,
+                    "aws_error": str(e),
+                }
+            },
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Erro do Cognito ao buscar usuário: {e}",
         )
     except Exception as e:
-        logger.exception("Erro inesperado ao buscar usuário")
+        logger.exception(
+            "Erro inesperado ao buscar usuário",
+            extra={
+                "extra_data": {
+                    "event": "get_user_unexpected_error",
+                    "username": username,
+                    "application": application,
+                    "error": str(e),
+                }
+            },
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao buscar usuário: {e}",
@@ -102,7 +130,17 @@ def get_user(
         attr["Name"]: attr.get("Value", "")
         for attr in resp.get("UserAttributes", [])
     }
-
+    logger.info(
+        "Usuário encontrado no Cognito",
+        extra={
+            "extra_data": {
+                "event": "get_user_success",
+                "username": resp.get("Username", username),
+                "application": application,
+                "user_status": resp.get("UserStatus"),
+            }
+        },
+    )
     return UserResponse(
         username=resp["Username"],
         enabled=resp.get("Enabled", True),
@@ -161,7 +199,7 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
         "Requisição de troca de senha recebida",
         extra={
             "extra_data": {
-                "event": "request_received",
+                "event": "password_reset_request_received",
                 "username": identifier,
                 "application": payload.application,
                 "payload": payload.dict(),
@@ -175,10 +213,47 @@ def change_user_password(username: str, payload: ChangePasswordRequest):
             application=payload.application,
         )
     except ValueError as ve:
-        # aplicação inválida
+        logger.warning(
+            "Erro de validação ao alterar senha",
+            extra={
+                "extra_data": {
+                    "event": "password_reset_validation_error",
+                    "username": identifier,
+                    "application": payload.application,
+                    "error": str(ve),
+                }
+            },
+        )
         raise HTTPException(status_code=400, detail=str(ve))
+    except ClientError as e:
+        # Erros vindos da AWS (InvalidPasswordException, policy, etc.)
+        logger.exception(
+            "Erro do Cognito ao alterar senha",
+            extra={
+                "extra_data": {
+                    "event": "password_reset_client_error",
+                    "username": identifier,
+                    "application": payload.application,
+                    "aws_error": str(e),
+                }
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao alterar senha do usuário no Cognito: {e}",
+        )
     except Exception as e:
-        logger.exception("Erro ao alterar senha no Cognito")
+        logger.exception(
+            "Erro inesperado ao alterar senha",
+            extra={
+                "extra_data": {
+                    "event": "password_reset_unexpected_error",
+                    "username": identifier,
+                    "application": payload.application,
+                    "error": str(e),
+                }
+            },
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao alterar senha do usuário no Cognito: {e}",

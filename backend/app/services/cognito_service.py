@@ -45,7 +45,36 @@ def resolve_user_pool_id(application: str) -> str:
 
 
 def generate_numeric_password(length: int = 6) -> str:
+    """Gera uma senha numérica aleatória, ex: '202125'."""
     return "".join(random.choices(string.digits, k=length))
+
+def generate_complex_password(length: int = 10) -> str:
+    """
+    Gera uma senha forte para corp/parcerias:
+    - pelo menos 1 minúscula
+    - pelo menos 1 maiúscula
+    - pelo menos 1 dígito
+    - pelo menos 1 caractere especial
+    """
+    if length < 8:
+        length = 8
+
+    lower = random.choice(string.ascii_lowercase)
+    upper = random.choice(string.ascii_uppercase)
+    digit = random.choice(string.digits)
+
+    # usa um conjunto de especiais "safe" pro Cognito
+    specials = "!@#$%^&*()-_=+[]{}"
+    special = random.choice(specials)
+
+    remaining = length - 4
+    all_chars = string.ascii_letters + string.digits + specials
+    others = [random.choice(all_chars) for _ in range(remaining)]
+
+    password_list = [lower, upper, digit, special] + others
+    random.shuffle(password_list)
+
+    return "".join(password_list)
 
 
 def admin_get_user(username: str, application: str):
@@ -137,12 +166,20 @@ def set_user_password(
     """
     Define a senha do usuário no Cognito usando admin_set_user_password
     no pool escolhido pela aplicação.
+
+    - app: senha numérica de 6 dígitos
+    - corp/parcerias: senha alfanumérica com caractere especial
     """
     client = get_cognito_client()
     user_pool_id = resolve_user_pool_id(application)
 
+    # Define o tipo de senha conforme a aplicação
     if password is None:
-        password = generate_numeric_password(6)
+        if application == "app":
+            password = generate_numeric_password(6)
+        else:
+            # corp / parcerias
+            password = generate_complex_password(10)
 
     masked = mask_password(password)
     logger.info(
