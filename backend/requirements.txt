@@ -4,3 +4,4 @@ boto3
 pydantic
 pydantic-settings
 gunicorn
+email-validator
